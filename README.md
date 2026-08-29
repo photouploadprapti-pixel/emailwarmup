@@ -1,10 +1,10 @@
 # Hearth
 
-A local email warmup app. Add two or more of your mailboxes and Hearth quietly
+Email warmup for your own mailboxes. Add two or more addresses and Hearth
 sends short human emails between them, opens what arrives, pulls warmup mail
 out of spam, and raises volume day by day.
 
-## Run it
+## Run it locally
 
 ```bash
 npm install
@@ -12,6 +12,20 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+## Deploy on Vercel
+
+The app cannot keep a SQLite file on Vercel — that is what caused the 500.
+After deploy, add these environment variables in the Vercel project, then
+redeploy:
+
+1. `ENCRYPTION_KEY` — 64 hex characters (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`)
+2. `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` — from a free [Turso](https://turso.tech) database, so mailboxes persist
+3. Optional `CRON_SECRET` — if set, protect `/api/warmup/tick`
+
+Vercel Cron hits `/api/warmup/tick` hourly. Use **Run now** anytime.
+
+Without Turso the dashboard still loads, but data lives in `/tmp` and can reset.
 
 ## Add a mailbox
 
@@ -24,10 +38,7 @@ Hearth needs at least two addresses so they can write to each other.
 
 ## How warmup works
 
-- A background worker runs every two minutes after `npm run dev` or `npm start`.
+- Locally, a worker runs every two minutes.
+- On Vercel, cron plus **Run now** drive the same cycle.
 - Each mailbox starts around 4 emails/day and grows about 30% daily up to your cap.
-- Sends are spread through the day instead of going out in a burst.
 - Incoming warmup mail is marked read, sometimes starred, and moved out of spam.
-- About half of received warmup mail gets a short reply.
-
-Mailbox passwords are encrypted at rest with `ENCRYPTION_KEY` in `.env.local`.

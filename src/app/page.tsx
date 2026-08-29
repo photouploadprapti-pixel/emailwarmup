@@ -5,7 +5,13 @@ import { AppShell } from '@/components/app-shell'
 import { EmptyState } from '@/components/empty-state'
 import { RunNowButton } from '@/components/run-now-button'
 import { StatsOverview } from '@/components/stats-overview'
-import { getAccountStats, getDashboardStats, listAccounts, listActivities } from '@/lib/db'
+import {
+  getAccountStats,
+  getDashboardStats,
+  getStoreWarning,
+  listAccounts,
+  listActivities,
+} from '@/lib/db'
 import { getDailyQuota } from '@/lib/warmup-schedule'
 
 export const dynamic = 'force-dynamic'
@@ -54,6 +60,20 @@ const HomePage = async () => {
         ) : null
       }
     >
+      {getStoreWarning() ? (
+        <p className="mb-6 rounded-2xl border border-ember-400/20 bg-ember-500/10 px-4 py-3 text-sm text-ember-100">
+          This Vercel deploy has no durable database yet. Add
+          {' '}
+          <code className="text-ember-50">TURSO_DATABASE_URL</code>
+          {' '}
+          and
+          {' '}
+          <code className="text-ember-50">TURSO_AUTH_TOKEN</code>
+          {' '}
+          in project env vars so mailboxes survive restarts.
+        </p>
+      ) : null}
+
       {accounts.length === 0 ? (
         <EmptyState />
       ) : (

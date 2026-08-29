@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['imapflow', 'nodemailer', '@libsql/client'],
+  serverExternalPackages: ['imapflow', 'nodemailer'],
 }
 
 export default nextConfig

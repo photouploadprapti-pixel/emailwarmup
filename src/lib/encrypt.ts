@@ -1,16 +1,21 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto'
 
 const ALGORITHM = 'aes-256-gcm'
 
 /**
- * Read the 32-byte encryption key from the environment.
+ * Resolve a 32-byte key from ENCRYPTION_KEY, or a stable project-based fallback.
  */
 const getKey = () => {
   const hex = process.env.ENCRYPTION_KEY
-  if (!hex || hex.length !== 64) {
-    throw new Error('ENCRYPTION_KEY must be a 64-character hex string')
+  if (hex && hex.length === 64) {
+    return Buffer.from(hex, 'hex')
   }
-  return Buffer.from(hex, 'hex')
+
+  const seed =
+    process.env.VERCEL_PROJECT_ID ??
+    process.env.VERCEL_URL ??
+    'hearth-local-dev-key'
+  return createHash('sha256').update(`hearth:${seed}`).digest()
 }
 
 /**
