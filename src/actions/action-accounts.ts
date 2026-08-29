@@ -103,7 +103,10 @@ export const actionCreateAccount = async (
       await runWarmupTick()
     }
     revalidatePath('/')
-    return { ok: true, message: 'Mailbox saved. Warmup is running in the background.' }
+    return {
+      ok: true,
+      message: `Saved ${account.email}. ${accounts.length} mailbox${accounts.length === 1 ? '' : 'es'} on the dashboard.`,
+    }
   } catch (error) {
     const message = connectionMessage(error)
     try {
@@ -114,13 +117,18 @@ export const actionCreateAccount = async (
         detail: message,
         status: 'failed',
       })
-    } catch {
-      return { ok: false, message }
-    }
-    revalidatePath('/')
-    return {
-      ok: false,
-      message: `${message} The mailbox was still saved on the dashboard so you can fix it.`,
+      const accounts = await listAccounts()
+      revalidatePath('/')
+      return {
+        ok: false,
+        message: `${message} Saved ${account.email} anyway — ${accounts.length} mailbox${accounts.length === 1 ? '' : 'es'} on the dashboard.`,
+      }
+    } catch (persistError) {
+      const persistMessage = persistError instanceof Error ? persistError.message : message
+      return {
+        ok: false,
+        message: `${message} Also could not save the mailbox: ${persistMessage}`,
+      }
     }
   }
 }

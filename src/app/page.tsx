@@ -37,6 +37,7 @@ const HomePage = async () => {
     backend: 'memory',
     durable: false,
     error: null,
+    accountCount: 0,
   }
 
   try {
@@ -81,20 +82,17 @@ const HomePage = async () => {
 
   return (
     <AppShell mailboxCount={accounts.length}>
+      <p className="mb-6 rounded-2xl border border-white/10 bg-ink-900/70 px-4 py-3 text-sm text-parchment-300">
+        Storage: {persistence.backend}
+        {` · ${persistence.accountCount} saved`}
+        {persistence.durable ? ' · durable' : ' · not durable'}
+        {persistence.error ? ` · ${persistence.error}` : ''}
+      </p>
+
       {!persistence.durable ? (
         <p className="mb-6 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-          Mailboxes are not being stored durably
-          {persistence.error ? `: ${persistence.error}` : '.'}
-          {' '}
-          Add working
-          {' '}
-          <code className="text-rose-50">TURSO_DATABASE_URL</code>
-          {' '}
-          and
-          {' '}
-          <code className="text-rose-50">TURSO_AUTH_TOKEN</code>
-          {' '}
-          in Vercel, then redeploy.
+          Mailboxes will disappear after this request unless Turso env vars are set
+          on the Vercel project and the latest deploy is live.
         </p>
       ) : null}
 
