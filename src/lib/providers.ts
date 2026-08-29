@@ -19,7 +19,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
   {
     id: 'gmail',
     label: 'Gmail',
-    hint: 'Use a Google App Password, not your normal password.',
+    hint: 'Gmail blocks normal passwords here. Create an App Password at myaccount.google.com/apppasswords.',
     smtpHost: 'smtp.gmail.com',
     smtpPort: 587,
     smtpSecure: false,

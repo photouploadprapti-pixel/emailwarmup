@@ -30,25 +30,44 @@ export type ActionResult = {
 }
 
 /**
+ * Google App Passwords are shown with spaces; SMTP wants 16 characters.
+ */
+const normalizePassword = (password: string) => {
+  return password.replace(/\s+/g, '')
+}
+
+/**
+ * Turn provider login errors into a short, actionable message.
+ */
+const connectionMessage = (error: unknown) => {
+  const raw = error instanceof Error ? error.message : 'Connection failed'
+  if (/535|BadCredentials|Username and Password not accepted/i.test(raw)) {
+    return 'Gmail rejected this password. Turn on 2-Step Verification, then paste a 16-character App Password — not your normal Gmail password. https://myaccount.google.com/apppasswords'
+  }
+  return raw
+}
+
+/**
  * Validate SMTP and IMAP credentials for a mailbox.
  */
 const testConnection = async (input: z.infer<typeof accountSchema>) => {
   const { verifySmtp } = await import('@/lib/smtp')
   const { verifyImap } = await import('@/lib/imap')
+  const password = normalizePassword(input.password)
   await verifySmtp({
     email: input.email,
     displayName: input.displayName,
     smtpHost: input.smtpHost,
     smtpPort: input.smtpPort,
     smtpSecure: input.smtpSecure,
-    password: input.password,
+    password,
   })
   await verifyImap({
     email: input.email,
     imapHost: input.imapHost,
     imapPort: input.imapPort,
     imapSecure: input.imapSecure,
-    password: input.password,
+    password,
   })
 }
 
@@ -64,8 +83,9 @@ export const actionCreateAccount = async (
   }
 
   try {
-    await testConnection(parsed.data)
-    const account = await createAccount(parsed.data)
+    const data = { ...parsed.data, password: normalizePassword(parsed.data.password) }
+    await testConnection(data)
+    const account = await createAccount(data)
     await addActivity({
       accountId: account.id,
       type: 'connected',
@@ -74,8 +94,7 @@ export const actionCreateAccount = async (
     revalidatePath('/')
     return { ok: true, message: 'Mailbox added. Warmup starts in the background.' }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Could not add mailbox'
-    return { ok: false, message }
+    return { ok: false, message: connectionMessage(error) }
   }
 }
 
@@ -92,8 +111,7 @@ export const actionTestAccount = async (raw: unknown): Promise<ActionResult> => 
     await testConnection(parsed.data)
     return { ok: true, message: 'SMTP and IMAP both look good.' }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Connection failed'
-    return { ok: false, message }
+    return { ok: false, message: connectionMessage(error) }
   }
 }
 
