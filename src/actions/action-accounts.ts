@@ -10,8 +10,6 @@ import {
   getAccount,
   updateAccount,
 } from '@/lib/db'
-import { verifyImap } from '@/lib/imap'
-import { verifySmtp } from '@/lib/smtp'
 const accountSchema = z.object({
   email: z.string().email(),
   displayName: z.string().min(1).max(80),
@@ -35,6 +33,8 @@ export type ActionResult = {
  * Validate SMTP and IMAP credentials for a mailbox.
  */
 const testConnection = async (input: z.infer<typeof accountSchema>) => {
+  const { verifySmtp } = await import('@/lib/smtp')
+  const { verifyImap } = await import('@/lib/imap')
   await verifySmtp({
     email: input.email,
     displayName: input.displayName,

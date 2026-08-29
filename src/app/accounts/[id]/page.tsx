@@ -11,6 +11,7 @@ import { getAccount, getAccountStats, listAccountActivities } from '@/lib/db'
 import { getDailyQuota, getHealthScore } from '@/lib/warmup-schedule'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 type AccountPageProps = {
   params: Promise<{ id: string }>

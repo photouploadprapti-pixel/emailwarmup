@@ -1,7 +1,5 @@
 'use client'
 
-import { AppShell } from '@/components/app-shell'
-
 type ErrorPageProps = {
   error: Error & { digest?: string }
   reset: () => void
@@ -10,13 +8,13 @@ type ErrorPageProps = {
 /**
  * Visible fallback when a server render fails.
  */
-export const ErrorPage = ({ reset }: ErrorPageProps) => {
+const ErrorPage = ({ reset }: ErrorPageProps) => {
   return (
-    <AppShell>
-      <section className="rounded-[2rem] border border-white/5 bg-ink-900/70 px-8 py-16 text-center">
+    <div className="flex min-h-screen items-center justify-center px-6">
+      <section className="max-w-lg rounded-[2rem] border border-white/5 bg-ink-900/70 px-8 py-16 text-center">
         <h1 className="font-display text-4xl text-parchment-50">Something went wrong.</h1>
         <p className="mt-3 text-parchment-400">
-          Try again. If this is a fresh Vercel deploy, wait a few seconds and refresh.
+          Try again. If this is a fresh Vercel deploy, wait a minute and refresh.
         </p>
         <button
           type="button"
@@ -26,7 +24,7 @@ export const ErrorPage = ({ reset }: ErrorPageProps) => {
           Try again
         </button>
       </section>
-    </AppShell>
+    </div>
   )
 }
 

@@ -15,16 +15,36 @@ import {
 import { getDailyQuota } from '@/lib/warmup-schedule'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 /**
  * Dashboard of mailboxes, daily warmup stats, and recent activity.
  */
 const HomePage = async () => {
-  const [accounts, stats, activities] = await Promise.all([
-    listAccounts(),
-    getDashboardStats(),
-    listActivities(12),
-  ])
+  const emptyStats = {
+    accountCount: 0,
+    warmingCount: 0,
+    sentToday: 0,
+    inboxPlacement: 100,
+    replyRate: 0,
+    rescuedToday: 0,
+  }
+
+  let accounts: Awaited<ReturnType<typeof listAccounts>> = []
+  let stats = emptyStats
+  let activities: Awaited<ReturnType<typeof listActivities>> = []
+
+  try {
+    ;[accounts, stats, activities] = await Promise.all([
+      listAccounts(),
+      getDashboardStats(),
+      listActivities(12),
+    ])
+  } catch {
+    accounts = []
+    stats = emptyStats
+    activities = []
+  }
 
   const cards = await Promise.all(
     accounts.map(async (account) => {

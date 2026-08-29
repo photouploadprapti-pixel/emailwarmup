@@ -23,7 +23,7 @@ redeploy:
 2. `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` — from a free [Turso](https://turso.tech) database, so mailboxes persist
 3. Optional `CRON_SECRET` — if set, protect `/api/warmup/tick`
 
-Vercel Cron hits `/api/warmup/tick` hourly. Use **Run now** anytime.
+Vercel Cron hits `/api/warmup/tick` once a day (Hobby limit). Use **Run now** anytime.
 
 Without Turso the dashboard still loads, but data lives in `/tmp` and can reset.
 
