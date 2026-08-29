@@ -73,9 +73,11 @@ export const AddAccountDialog = ({ label = 'Add mailbox' }: AddAccountDialogProp
     const result = await action(form)
     setBusy(null)
     setMessage({ ok: result.ok, text: result.message })
-    if (result.ok && mode === 'save') {
+    if (mode === 'save') {
       router.refresh()
-      close()
+      if (result.ok) {
+        close()
+      }
     }
   }
 
@@ -178,6 +180,11 @@ export const AddAccountDialog = ({ label = 'Add mailbox' }: AddAccountDialogProp
                   type="number"
                   className={fieldClass}
                 />
+                {form.smtpPort === 445 ? (
+                  <span className="mt-1 block text-xs text-rose-300">
+                    445 is not an SMTP port. Try 465 with SSL, or 587 without SSL.
+                  </span>
+                ) : null}
               </Field>
               <Field label="IMAP host">
                 <input

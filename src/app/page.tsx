@@ -1,14 +1,13 @@
-import { AddAccountDialog } from '@/components/add-account-dialog'
 import { AccountCard } from '@/components/account-card'
 import { ActivityFeed } from '@/components/activity-feed'
 import { AppShell } from '@/components/app-shell'
 import { EmptyState } from '@/components/empty-state'
-import { RunNowButton } from '@/components/run-now-button'
 import { StatsOverview } from '@/components/stats-overview'
 import {
   getAccountStats,
   getDashboardStats,
-  getStoreWarning,
+  getLastTickAt,
+  getPersistenceStatus,
   listAccounts,
   listActivities,
 } from '@/lib/db'
@@ -33,12 +32,20 @@ const HomePage = async () => {
   let accounts: Awaited<ReturnType<typeof listAccounts>> = []
   let stats = emptyStats
   let activities: Awaited<ReturnType<typeof listActivities>> = []
+  let lastTickAt: string | null = null
+  let persistence: Awaited<ReturnType<typeof getPersistenceStatus>> = {
+    backend: 'memory',
+    durable: false,
+    error: null,
+  }
 
   try {
-    ;[accounts, stats, activities] = await Promise.all([
+    ;[accounts, stats, activities, lastTickAt, persistence] = await Promise.all([
       listAccounts(),
       getDashboardStats(),
       listActivities(12),
+      getLastTickAt(),
+      getPersistenceStatus(),
     ])
   } catch {
     accounts = []
@@ -68,66 +75,68 @@ const HomePage = async () => {
   )
 
   const emails = Object.fromEntries(accounts.map((account) => [account.id, account.email]))
+  const warmingCount = accounts.filter(
+    (account) => account.warmupEnabled && account.status === 'warming',
+  ).length
 
   return (
-    <AppShell
-      action={
-        accounts.length > 0 ? (
-          <div className="flex items-center gap-2">
-            <RunNowButton />
-            <AddAccountDialog />
-          </div>
-        ) : null
-      }
-    >
-      {getStoreWarning() ? (
-        <p className="mb-6 rounded-2xl border border-ember-400/20 bg-ember-500/10 px-4 py-3 text-sm text-ember-100">
-          This Vercel deploy has no durable database yet. Add
+    <AppShell mailboxCount={accounts.length}>
+      {!persistence.durable ? (
+        <p className="mb-6 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+          Mailboxes are not being stored durably
+          {persistence.error ? `: ${persistence.error}` : '.'}
           {' '}
-          <code className="text-ember-50">TURSO_DATABASE_URL</code>
+          Add working
+          {' '}
+          <code className="text-rose-50">TURSO_DATABASE_URL</code>
           {' '}
           and
           {' '}
-          <code className="text-ember-50">TURSO_AUTH_TOKEN</code>
+          <code className="text-rose-50">TURSO_AUTH_TOKEN</code>
           {' '}
-          in project env vars so mailboxes survive restarts.
+          in Vercel, then redeploy.
         </p>
       ) : null}
 
-      {accounts.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="space-y-8">
-          {accounts.length === 1 ? (
-            <p className="rounded-2xl border border-ember-400/20 bg-ember-500/10 px-4 py-3 text-sm text-ember-100">
-              Add a second mailbox so Hearth can send warmup mail back and forth.
-            </p>
-          ) : null}
+      <StatsOverview stats={stats} />
 
-          <StatsOverview stats={stats} />
+      <p className="mt-4 text-sm text-parchment-400">
+        {warmingCount >= 2
+          ? `Warmup is on for ${warmingCount} mailboxes.`
+          : 'Warmup needs two connected mailboxes before it can send.'}
+        {lastTickAt
+          ? ` Last cycle ${new Date(lastTickAt).toLocaleString()}.`
+          : ' No cycle has run yet — use Run now after you add two working inboxes.'}
+      </p>
 
-          <section>
-            <div className="mb-4 flex items-end justify-between">
-              <div>
-                <h2 className="font-display text-3xl text-parchment-50">Mailboxes</h2>
-                <p className="text-sm text-parchment-400">
-                  Warmup runs by itself every couple of minutes.
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-4 lg:grid-cols-2">
-              {cards.map((card) => (
-                <AccountCard key={card.account.id} {...card} />
-              ))}
-            </div>
-          </section>
+      {accounts.length === 1 ? (
+        <p className="mt-4 rounded-2xl border border-ember-400/20 bg-ember-500/10 px-4 py-3 text-sm text-ember-100">
+          Add a second working mailbox so Hearth can send warmup mail back and forth.
+        </p>
+      ) : null}
 
-          <section>
-            <h2 className="mb-4 font-display text-3xl text-parchment-50">Activity</h2>
-            <ActivityFeed items={activities} emails={emails} />
-          </section>
+      <section className="mt-8">
+        <div className="mb-4">
+          <h2 className="font-display text-3xl text-parchment-50">Mailboxes</h2>
+          <p className="text-sm text-parchment-400">
+            Saved accounts stay here. Open one to pause, fix settings, or remove it.
+          </p>
         </div>
-      )}
+        {cards.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {cards.map((card) => (
+              <AccountCard key={card.account.id} {...card} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-4 font-display text-3xl text-parchment-50">Activity</h2>
+        <ActivityFeed items={activities} emails={emails} />
+      </section>
     </AppShell>
   )
 }

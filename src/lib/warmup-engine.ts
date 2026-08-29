@@ -9,6 +9,7 @@ import {
   listAccounts,
   markWarmupEvent,
   recordWarmupSend,
+  recordWarmupTick,
   setAccountStatus,
 } from '@/lib/db'
 import { composeWarmupEmail, composeWarmupReply } from '@/lib/email-templates'
@@ -49,7 +50,10 @@ export const runWarmupTick = async () => {
   globalForWorker.hearthTickRunning = true
   try {
     const accounts = await listAccounts()
-    const enabled = accounts.filter((account) => account.warmupEnabled)
+    await recordWarmupTick()
+    const enabled = accounts.filter(
+      (account) => account.warmupEnabled && account.status !== 'error',
+    )
 
     for (const account of enabled) {
       try {

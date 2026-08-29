@@ -8,6 +8,7 @@ import {
   createAccount,
   deleteAccount,
   getAccount,
+  listAccounts,
   updateAccount,
 } from '@/lib/db'
 const accountSchema = z.object({
@@ -43,6 +44,9 @@ const connectionMessage = (error: unknown) => {
   const raw = error instanceof Error ? error.message : 'Connection failed'
   if (/535|BadCredentials|Username and Password not accepted/i.test(raw)) {
     return 'Gmail rejected this password. Turn on 2-Step Verification, then paste a 16-character App Password — not your normal Gmail password. https://myaccount.google.com/apppasswords'
+  }
+  if (/ECONNREFUSED|:445\b/i.test(raw)) {
+    return 'Connection refused. Port 445 is not SMTP — it is Windows file sharing. Use 465 with SSL checked, or 587 with SSL unchecked.'
   }
   return raw
 }
@@ -82,19 +86,42 @@ export const actionCreateAccount = async (
     return { ok: false, message: parsed.error.issues[0]?.message ?? 'Invalid form' }
   }
 
+  const data = { ...parsed.data, password: normalizePassword(parsed.data.password) }
+
   try {
-    const data = { ...parsed.data, password: normalizePassword(parsed.data.password) }
     await testConnection(data)
-    const account = await createAccount(data)
+    const account = await createAccount(data, { connected: true })
     await addActivity({
       accountId: account.id,
       type: 'connected',
       detail: 'Mailbox connected and warmup started',
     })
+    const accounts = await listAccounts()
+    const warming = accounts.filter((item) => item.warmupEnabled && item.status === 'warming')
+    if (warming.length >= 2) {
+      const { runWarmupTick } = await import('@/lib/warmup-engine')
+      await runWarmupTick()
+    }
     revalidatePath('/')
-    return { ok: true, message: 'Mailbox added. Warmup starts in the background.' }
+    return { ok: true, message: 'Mailbox saved. Warmup is running in the background.' }
   } catch (error) {
-    return { ok: false, message: connectionMessage(error) }
+    const message = connectionMessage(error)
+    try {
+      const account = await createAccount(data, { connected: false, lastError: message })
+      await addActivity({
+        accountId: account.id,
+        type: 'error',
+        detail: message,
+        status: 'failed',
+      })
+    } catch {
+      return { ok: false, message }
+    }
+    revalidatePath('/')
+    return {
+      ok: false,
+      message: `${message} The mailbox was still saved on the dashboard so you can fix it.`,
+    }
   }
 }
 

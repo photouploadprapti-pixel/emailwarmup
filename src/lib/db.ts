@@ -1,5 +1,11 @@
 import { decryptSecret, encryptSecret } from '@/lib/encrypt'
-import { isEphemeralStore, loadStore, saveStore, type StoredAccount } from '@/lib/store'
+import {
+  getStoreStatus,
+  isEphemeralStore,
+  loadStore,
+  saveStore,
+  type StoredAccount,
+} from '@/lib/store'
 import { createId, todayKey } from '@/lib/utils'
 import type { AccountUpdateInput, EmailAccount, EmailAccountInput } from '@/types/account'
 import type { ActivityItem, ActivityType, DashboardStats } from '@/types/activity'
@@ -59,13 +65,19 @@ export const getAccountWithSecret = async (id: string) => {
  * Insert a new mailbox.
  * @param input - Connection details captured from the add-account form
  */
-export const createAccount = async (input: EmailAccountInput) => {
+export const createAccount = async (
+  input: EmailAccountInput,
+  options?: { connected?: boolean; lastError?: string | null },
+) => {
   const store = await loadStore()
   const createdAt = new Date().toISOString()
+  const email = input.email.trim().toLowerCase()
+  const connected = options?.connected ?? true
+  const existing = store.accounts.find((account) => account.email === email)
   const account: StoredAccount = {
-    id: createId(),
-    email: input.email.trim().toLowerCase(),
-    displayName: input.displayName.trim() || input.email.split('@')[0] || 'Inbox',
+    id: existing?.id ?? createId(),
+    email,
+    displayName: input.displayName.trim() || email.split('@')[0] || 'Inbox',
     provider: input.provider,
     smtpHost: input.smtpHost.trim(),
     smtpPort: input.smtpPort,
@@ -74,14 +86,18 @@ export const createAccount = async (input: EmailAccountInput) => {
     imapPort: input.imapPort,
     imapSecure: input.imapSecure,
     dailyLimit: input.dailyLimit,
-    warmupEnabled: true,
-    status: 'warming',
-    lastError: null,
-    startedAt: createdAt,
-    createdAt,
+    warmupEnabled: connected,
+    status: connected ? 'warming' : 'error',
+    lastError: options?.lastError ?? null,
+    startedAt: connected ? createdAt : existing?.startedAt ?? null,
+    createdAt: existing?.createdAt ?? createdAt,
     passwordEncrypted: encryptSecret(input.password),
   }
-  store.accounts.push(account)
+  if (existing) {
+    Object.assign(existing, account)
+  } else {
+    store.accounts.push(account)
+  }
   await saveStore(store)
   return mapAccount(account)
 }
@@ -321,6 +337,30 @@ export const getAccountStats = async (accountId: string) => {
 /**
  * Whether this host wipes mailbox data between serverless invocations.
  */
-export const getStoreWarning = () => {
+export const getStoreWarning = async () => {
   return isEphemeralStore()
+}
+
+/**
+ * Persistence backend shown on the dashboard.
+ */
+export const getPersistenceStatus = async () => {
+  return getStoreStatus()
+}
+
+/**
+ * Record when the warmup worker last ran.
+ */
+export const recordWarmupTick = async () => {
+  const store = await loadStore()
+  store.lastTickAt = new Date().toISOString()
+  await saveStore(store)
+}
+
+/**
+ * ISO timestamp of the last warmup pass, if any.
+ */
+export const getLastTickAt = async () => {
+  const store = await loadStore()
+  return store.lastTickAt
 }
